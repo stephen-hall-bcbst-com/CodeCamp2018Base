@@ -31,7 +31,7 @@ var BootstrapData =
     startAtBeginningOfMazeList: false,
 
     // set at the repository level, shouldn't be changed by teams
-    teamName: "Team Charlie",
+    teamName: "Intern Invasion",
     mazes: [
         "3:3:TinyTim",
         "10:10:SlipperyDevil",
@@ -42,7 +42,6 @@ var BootstrapData =
     minimumCycleTime: 10,
     numberOfBots: 6,
 };
-
 
 const GAME_SERVER_URL = process.env.GAME_SERVER_URL || 'http://game.code-camp-2018.com';
 const SCORE_SERVER_URL = process.env.SCORE_SERVER_URL || 'http://score.code-camp-2018.com';
@@ -89,8 +88,10 @@ var req = require('request');
 logger.trace(__filename, '', 'Load Code Camp bots...');
 var CodeCampBots = [];
 for (var currentBot = 0; currentBot < BootstrapData.numberOfBots; currentBot++) {
-    logger.trace(__filename, '', UtilJS.format('Loading Bot #%d', currentBot+1));
-    CodeCampBots[currentBot] = require(UtilJS.format('./Bots/CodeCamp-Bot%d', currentBot+1));
+    if (BootstrapData.runAllBots || BootstrapData.singleBotToRun == (currentBot + 1)) {
+        logger.trace(__filename, '', UtilJS.format('Loading Bot #%d', currentBot + 1));
+        CodeCampBots[currentBot] = require(UtilJS.format('./Bots/CodeCamp-Bot%d', currentBot + 1));
+}
 }
 
 // BASIC FLOW
@@ -316,8 +317,20 @@ function createGame() {
 
         logger.trace(__filename, 'createGame()-callback()', UtilJS.format('Parsing JSON: %s', body));
         var game = JSON.parse(body);
+
+        if (!game.status.toLowerCase().includes('game created')) {
+            logger.error(__filename, 'createGame()-callback()', 'Error received when creating game:');
+            logger.error(__filename, 'createGame()-callback()', JSON.stringify(game));
+            process.exit(1);
+        }
+
         logger.trace(__filename, 'createGame()-callback()', UtilJS.format('Game URL = %s', game.url));
-        var gameId = game.gameId;
+        var gameId;
+        if (undefined === game.gameId) {
+            gameId = game.url.substring(game.url.lastIndexOf('/')+1);
+        } else {
+            gameId = game.gameId;
+        }
         logger.debug(__filename, 'createGame()-callback()', UtilJS.format('New Game with ID %s created!', gameId));
 
         logger.debug(__filename, 'createGame()-callback()', 'We\'re ready to play the game!');
@@ -374,7 +387,7 @@ function playGame(gameId, gameState) {
             logger.trace(__filename, 'playGame()', '  Action: ' + botCommands[currentBot].action);
             logger.trace(__filename, 'playGame()', '  Direction: ' + botCommands[currentBot].direction);
         } else {
-            botCommands[currentBot] = {action: null, direction: null};
+            botCommands[currentBot] = {action: null, direction: null, message: null};
         }
     }
 
@@ -467,6 +480,7 @@ function playGame(gameId, gameState) {
     logger.trace(__filename, 'playGame()', 'Producing cohesion results...');
     var cohesionScores = [];
     for (var currentBot = 0; currentBot < botCommands.length; currentBot++) {
+        if (BootstrapData.runAllBots || BootstrapData.singleBotToRun == (currentBot+1)) {
         if (botCommands[currentBot].action != null || botCommands[currentBot].direction != null) {
             cohesionScores[currentBot] = 0;
         } else {
@@ -482,7 +496,9 @@ function playGame(gameId, gameState) {
         if (botCommands[currentBot].message == winningCommand.message.value) {
             cohesionScores[currentBot] == null ? cohesionScores[currentBot] = 0.32 : cohesionScores[currentBot] += 0.32;
         }
-
+        } else {
+            cohesionScores[currentBot] = 0;
+        }
         logger.trace(__filename, 'playGame()', UtilJS.format('  Result for Bot #%d = %f', currentBot+1, cohesionScores[currentBot]));
     }
 
@@ -515,40 +531,45 @@ function playGame(gameId, gameState) {
             return; // don't exit because we need shutdownGame to finish
         }
 
-        logger.trace(__filename, 'playGame()-callback()', UtilJS.format('JSON returned: %s', body));
-        var responseObj = body;
-
-        // are we dead?
-        if (responseObj.playerState & 512) {
-            logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED!");
-            logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
-            pickMaze(false);
-            return;
-        }
-
-        // check to see if we've won!
-        logger.trace(__filename, 'playGame()-callback()', UtilJS.format('Iterating over %s outcomes...', responseObj.outcome.length));
-        for (var currentOutcome = 0; currentOutcome < responseObj.outcome.length; currentOutcome++) {
-            logger.trace(__filename, 'playGame()-callback()', UtilJS.format('Examining outcome #%d: %s', currentOutcome, responseObj.outcome[currentOutcome]));
-            if (responseObj.outcome[currentOutcome].includes("Congratulations!")) {
-                // we solved the maze!
-                logger.info(__filename, 'playGame()-callback()', "MAZE SOLVED!");
-                logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
-                pickMaze(true);
-                return;
-            }
-            if (responseObj.outcome[currentOutcome].includes("YOU HAVE DIED")) {
-                // we're dead, Jim...
+        if (response.statusCode == 400) {
+            logger.error(__filename, 'playGame()-callback()', 'Error making move:');
+            logger.error(__filename, 'playGame()-callback()', JSON.stringify(body));
+        } else {
+            logger.trace(__filename, 'playGame()-callback()', UtilJS.format('JSON returned: %s', body));
+            var responseObj = body;
+    
+            // are we dead?
+            if (responseObj.playerState & 512) {
                 logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED!");
                 logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
                 pickMaze(false);
                 return;
             }
+    
+            // check to see if we've won!
+            logger.trace(__filename, 'playGame()-callback()', UtilJS.format('Iterating over %s outcomes...', responseObj.outcome.length));
+            for (var currentOutcome = 0; currentOutcome < responseObj.outcome.length; currentOutcome++) {
+                logger.trace(__filename, 'playGame()-callback()', UtilJS.format('Examining outcome #%d: %s', currentOutcome, responseObj.outcome[currentOutcome]));
+                if (responseObj.outcome[currentOutcome].includes("Congratulations!")) {
+                    // we solved the maze!
+                    logger.info(__filename, 'playGame()-callback()', "MAZE SOLVED!");
+                    logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
+                    pickMaze(true);
+                    return;
+                }
+                if (responseObj.outcome[currentOutcome].includes("YOU HAVE DIED")) {
+                    // we're dead, Jim...
+                    logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED!");
+                    logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
+                    pickMaze(false);
+                    return;
+                }
+            }
+    
+            // we haven't won, so let's keep playing!
+            logger.debug(__filename, 'playGame()-callback()', UtilJS.format('Making move #%d', responseObj.score.moveCount + 1));
         }
 
-        // we haven't won, so let's keep playing!
-        logger.debug(__filename, 'playGame()-callback()', UtilJS.format('Making move #%d', responseObj.score.moveCount + 1));
-        
         // but first make sure we aren't moving TOO fast
         var playGameEndTS = Date.now();
         if (playGameEndTS - playGameStartTS < BootstrapData.minimumCycleTime) {
