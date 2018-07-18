@@ -563,7 +563,7 @@ function playGame(gameId, gameState) {
                 if (responseObj.outcome[currentOutcome].includes("YOU HAVE DIED")) {
                     // we're dead, Jim...
                     logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED!");
-                    logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
+                    logger.trace(__filename, 'playGame()-callback()', 'Trying again...');
                     pickMaze(false);
                     return;
                 }
