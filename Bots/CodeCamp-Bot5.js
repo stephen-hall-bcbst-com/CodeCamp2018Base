@@ -1,6 +1,7 @@
 'use strict';
 
 // *** DON'T MESS WITH JAMES DEAN'S AWESOME BOT *** //
+
 var command = {
     action: null,
     direction: null,
