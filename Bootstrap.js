@@ -19,6 +19,7 @@ delete require.cache['data/data.json'];
 
 // load utilities
 require('dotenv').config();
+var openUrl = require("openurl");
 var LoggerJS = require('./Logger.js');
 var UtilJS = require('util');
 var fs = require('fs'); // file system - allows reading and writing files
@@ -335,6 +336,8 @@ function createGame() {
 
         logger.debug(__filename, 'createGame()-callback()', 'We\'re ready to play the game!');
         logger.info(__filename, 'createGame()-callback()', 'START THE GAME!');
+        openUrl.open("http://code-camp-2018.com/view/" + gameId);
+        
         playGame(gameId, null);
         logger.debug(__filename, 'createGame()-callback()', 'Exit Point');
     });
