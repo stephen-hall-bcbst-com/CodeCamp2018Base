@@ -5,6 +5,7 @@ The file should contain everything between the dashes below (do not include the 
 {
     "runOneBot": true,
     "botToRun": 1,
+    "openGameMonitor": false,
     "specificMaze": null,
     "playAllMazes": false,
     "logLevel": "DEBUG"
@@ -19,6 +20,10 @@ Here are the values and what they mean:
 
   - botToRun
       If runOneBot is "true", then this value should be your bot number (1-6)
+
+  - openGameMonitor
+      If set to "true", then Chrome will be launched at the beginning of every game to monitor
+      the progress of the bot.
 
   - specificMaze
       If you want to run through all the mazes, set this value to "null"

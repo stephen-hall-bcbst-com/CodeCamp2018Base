@@ -4,17 +4,25 @@
         "ecmaVersion": 6
     },
     "rules": {
-        "linebreak-style" : ["error", "windows"],
-        "no-undef" : "error",
-        "no-var" : "off",
+        "linebreak-style": [
+            "error",
+            "windows"
+        ],
+        "no-undef": "error",
+        "no-var": "off",
         "require-jsdoc": "off",
         "max-len": "off",
         "no-multiple-empty-lines": "off",
         "quotes": "off",
         "no-trailing-spaces": "off",
-        "guard-for-in": "off"
+        "guard-for-in": "off",
+        "padded-blocks": "off",
+        "keyword-spacing": "off",
+        "space-before-blocks": "off",
+        "object-curly-spacing": "off",
+        "space-before-function-paren": "off"
     },
     "env": {
-        "node" : true
+        "node": true
     }
 }
