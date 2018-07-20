@@ -37,7 +37,7 @@ var BootstrapData =
         '3:5:TinyTinaTwo',
         '5:5:LittleLama',
         '5:10:LittleLamasMama',
-        '10:10:McRib',
+//        '10:10:McRib',   <-- has double-trap that can't be passed
         '10:15:McRibXtraValueMeal',
         '15:15:FingerTrap',
         '15:20:TwoFingerTrap',
