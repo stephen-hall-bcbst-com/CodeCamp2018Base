@@ -4,6 +4,7 @@
   "description": "Bootstrap for BCBSTN Code Camp 2018",
   "main": "Bootstrap.js",
   "scripts": {
+    "start": "node Bootstrap.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "James Dean <james_dean@bcbst.com>; Stephen Hall <stephen_hall@bcbst.com>",
