@@ -1,34 +1,25 @@
 'use strict';
 // James Dean
-var command = {
-    action: null,
-    direction: null,
-    message: '',
-};
-
+var command = { action: null, direction: null, message: '' };
 let deadEnded = false; // used while back-tracking out of a dead end
 let searchStack = []; // used to track nearby exit smell when dir unknown
-
 let dirs = ['none', 'north', 'south', 'east', 'west'];
+let map; // used to track movement
+let traps; // used to track traps
 
-// 50x50 grid used to map progress
-let map;
-let traps;
-
-// init map called with each new maze
-function initMap() {
+function initMap(loc) {
     map = new Array(50);
     traps = new Array(50);
+    deadEnded = false;
     searchStack = [];
     for (var x = 0; x < map.length; x++) {
         map[x] = new Array(50).fill(0);
         traps[x] = new Array(50).fill(0);
     }
-
-    deadEnded = false;
+    map[loc.row][loc.col] == 0; // add visit to start cell
+    traps[loc.row][loc.col] = 1; // note lava trap in start cell
 }
 
-// return the reverse direction
 function reverse(dir) {
     if (dir == 'north') return 'south';
     if (dir == 'south') return 'north';
@@ -49,141 +40,52 @@ function peek(arr, loc, dir) {
     return arr[row][col];
 }
 
-// validate a potential move
 function doMove(si, so, sm, oe, loc) {
-    let move;
     let paths = [];
+    let best = { dir: 'none', visits: 7500 }; // 7500 is max potential cell count
 
     for (var x = 0; x < oe.length; x++) {
-        move = 'ok';
-        if (move == 'ok') move = traps[loc.row][loc.col] == oe[x] ? 'dead-path' : 'ok';
-        if (move == 'ok') move = si.includes('lava') && dirs[oe[x]] == 'north' ? 'trap' : 'ok';
-        if (move == 'ok') move = so.includes('wind to the ' + dirs[oe[x]]) ? 'trap' : 'ok';
-        if (move == 'ok') move = so.includes('hissing to the ' + dirs[oe[x]]) ? 'trap' : 'ok';
-        if (move == 'ok') move = sm.includes('CHEESE') ? 'win' : 'ok';
-
-        // move toward detected exit automatically
-        if (move == 'win') return { action: 'move', direction: 'south', message: 'win' };
-        if (move == 'near-win') return { action: 'move', direction: dirs[oe[x]], message: 'near-win' };
-
-        if (move == 'ok') {
-            paths.push({ dir: dirs[oe[x]], visits: peek(map, loc, dirs[oe[x]]) });
-        } else if (move == 'trap') {
-            traps[loc.row][loc.col] = oe[x]; // mark trap in dir
-        }
+        if (so.includes('beeping') && so.includes(dirs[oe[x]])) return { action: 'move', direction: dirs[oe[x]], message: 'win' }; // WIN!
+        if ((so.includes('wind') || so.includes('rhythm')) && so.includes('to the ' + dirs[oe[x]])) traps[loc.row][loc.col] = oe[x];
+        if (traps[loc.row][loc.col] != oe[x]) paths.push({ dir: dirs[oe[x]], visits: peek(map, loc, dirs[oe[x]]) }); // save this path
     }
-
-    let best = { dir: 'none', visits: 7500 };
-    paths.forEach((path) => {
-        if (path.visits < best.visits) best = path;
-    });
-
-    command = { action: 'move', direction: best.dir, message: '' };
-    console.log('  doMove -> %s:%s:%s', command.action, command.direction, command.message);
-
-    return command;
+    for (var x = 0; x < paths.length; x++) if (paths[x].visits < best.visits) best = paths[x];
+    if (searchStack.length > 0) return searchStack.pop();
+    else return { action: 'move', direction: best.dir, message: '' };
 }
 
 module.exports = {
-    /**
-     * @param {Object} gameState
-     * @return {Object} command
-     */
     takeAction: function(gameState) {
-        // *********************************************************************
-        // CODE HERE!
-        // *********************************************************************
+        if (gameState == null) return { action: 'look', direction: 'none', message: '' };
+        if (gameState.score.moveCount == 1) initMap(gameState.location);
 
-        if (gameState == null) {
-            initMap();
-            command.action = 'look';
-            command.direction = 'none';
-            return command;
-        }
-
-        console.log('MOVE: %s', gameState.score.moveCount);
-
-        // alias engram data - ignore taste and touch
-        let si = gameState.engram.sight;
-        let so = gameState.engram.sound;
-        let sm = gameState.engram.smell;
-
-        let loc = gameState.location;
-        if (map[loc.row][loc.col] == 0) map[loc.row][loc.col] = 1; // new game, add visit
-
-        // capture last action and direction
-        let lDir = gameState.direction.toLowerCase();
-        let lAct = gameState.action.toLowerCase();
-
-        // assume we're moving
-        command.action = 'move';
-
-        // build ex object from current sight string
-        let ex = getExits(si);
-
-        // always stand if end up sitting
-        if (gameState.playerStateInWords == 'sitting') {
-            command.action = 'stand';
-            command.direction = lDir; // carry last dir to next move
-
-            console.log('  !! SITTING !! Action -> %s:%s:%s', command.action, command.direction, command.message);
-
-            return command;
-        }
-
-        // update the map visit count
-        if (lAct == 'move') {
-            map[loc.row][loc.col] = map[loc.row][loc.col] + 1;
-        }
-
-        // hear the exit - move there above all other options (it's never north)
-        if (so.includes('beeping')) {
-            if (so.includes('south')) command.direction = 'south';
-            if (so.includes('east')) command.direction = 'east';
-            if (so.includes('west')) command.direction = 'west';
-            if (command.direction != '') console.log('Exit heard, moving %s', command.direction);
-            return command;
-        }
-
-        // smell the exit, but no direction given.. focus on this only!
-        if (sm.includes('less stale air') || searchStack.length > 0) {
+        let loc = gameState.location; // grab location
+        let lDir = gameState.direction.toLowerCase(); // alias last direction
+        let ex = getExits(gameState.engram.sight); // build ex (open exits) array
+        if (gameState.action.toLowerCase() == 'move') map[loc.row][loc.col] = map[loc.row][loc.col] + 1; // update map visit count
+        if (gameState.engram.smell.includes('CHEESE')) return { action: 'move', direction: 'south', message: 'win' }; // move toward exit
+        if (gameState.engram.smell.includes('less stale air') && searchStack == 0) {
             for (var x = 0; x < ex.length; x++) {
-                if (peek(map, loc, dirs[ex[x]]) + peek(traps, loc, dirs[ex[x]]) == 0 && dirs[ex[x]] != 'north') {
+                if (dirs[ex[x]] != 'north' && peek(map, loc, dirs[ex[x]]) + peek(traps, loc, dirs[ex[x]]) == 0) {
+                    searchStack.push({ action: 'move', direction: reverse(dirs[ex[x]]), message: '' });
                     searchStack.push({ action: 'move', direction: dirs[ex[x]], message: '' });
                 }
             }
         }
 
-        // if there's a search dir on the stack go there
-        if (searchStack.length > 0) return searchStack.pop();
-
-        // note if we're dead-ended for backtracking
+        // handle escaping and marking dead-ends
         if (!deadEnded) {
             if (ex.count == 1) {
                 deadEnded = true;
-
-                // capture dead-end as trap, -1 indicates dead-end head
-                traps[loc.row][loc.col] = -1;
-
-                // back out of dead end
-                command.direction = reverse(lDir);
+                traps[loc.row][loc.col] = -1; // capture dead-end as trap, -1 indicates dead-end head
+                command.direction = reverse(lDir); // back out of dead end
                 return command;
             }
         } else {
             traps[loc.row][loc.col] = dirs.indexOf(reverse(lDir)); // note dead end
-            if (ex.count > 2) {
-                deadEnded = false;
-                console.log('  -deadEnded');
-            }
+            if (ex.count > 2) deadEnded = false;
         }
 
-        // get and make a move
-        return doMove(si, so, sm, ex, loc);
-
-        console.log('  !! NO COMMAND RETURNED !! Command -> = %s:%s:%s', command.action, command.direction, command.message);
-
-        // *********************************************************************
-        // STOP CODING!
-        // *********************************************************************
+        return doMove(gameState.engram.sight, gameState.engram.sound, gameState.engram.smell, ex, loc); // make a normal move
     },
 };

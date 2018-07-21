@@ -37,7 +37,7 @@ var BootstrapData =
         '3:5:TinyTinaTwo',
         '5:5:LittleLama',
         '5:10:LittleLamasMama',
-//        '10:10:McRib',   <-- has double-trap that can't be passed
+        '10:10:McRib',
         '10:15:McRibXtraValueMeal',
         '15:15:FingerTrap',
         '15:20:TwoFingerTrap',
@@ -224,7 +224,7 @@ function pickMaze(wonLastMaze) {
         if (BootstrapData.specificMazeStarted) {
             if (wonLastMaze == true) {
                 // we've already run the specific maze, so we're done here!
-                logger.info(__filename, 'pickMaze()', 'CONGRATULATIONS - you beat the specific maze!');
+                logger.info(__filename, 'pickMaze()', 'CONGRATULATIONS - you beat: ' + BootstrapData.mazeId);
                 process.exit(0);
             }
         }
@@ -358,7 +358,7 @@ function createGame() {
         }
 
         logger.debug(__filename, 'createGame()-callback()', 'We\'re ready to play the game!');
-        logger.info(__filename, 'createGame()-callback()', 'START THE GAME!');
+        logger.info(__filename, 'createGame()-callback()', 'START GAME - DEFEAT THE MAZE: ' + BootstrapData.mazeId);
         playGame(gameId, null);
         logger.debug(__filename, 'createGame()-callback()', 'Exit Point');
     });
@@ -548,7 +548,7 @@ function playGame(gameId, gameState) {
     if (null != gameState) {
         // are we dead?
         if (gameState.playerState & 512) {
-            logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED!");
+            logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED in " + BootstrapData.mazeId + "!");
             if (BootstrapData.runAllBots) {
                 logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
                 pickMaze(false);
@@ -562,14 +562,16 @@ function playGame(gameId, gameState) {
             logger.trace(__filename, 'playGame()-callback()', UtilJS.format('Examining outcome #%d: %s', currentOutcome, gameState.outcome[currentOutcome]));
             if (gameState.outcome[currentOutcome].includes("Congratulations!")) {
                 // we solved the maze!
-                logger.info(__filename, 'playGame()-callback()', "MAZE SOLVED!");
+                logger.info(gameState.outcome[currentOutcome]);
+                logger.info(__filename, 'playGame()-callback()', "MAZE " + BootstrapData.mazeId + " SOLVED!");
                 logger.trace(__filename, 'playGame()-callback()', 'Going to the next maze!');
                 pickMaze(true);
                 return;
             }
             if (gameState.outcome[currentOutcome].includes("YOU HAVE DIED")) {
                 // we're dead, Jim...
-                logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED!");
+                logger.info(gameState.outcome[currentOutcome]);
+                logger.info(__filename, 'playGame()-callback()', "YOU HAVE DIED in " + BootstrapData.mazeId + "!");
                 logger.trace(__filename, 'playGame()-callback()', 'Trying again...');
                 pickMaze(false);
                 return;
