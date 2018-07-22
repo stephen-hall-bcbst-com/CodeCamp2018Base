@@ -16,7 +16,7 @@ function initMap(loc) {
         map[x] = new Array(50).fill(0);
         traps[x] = new Array(50).fill(0);
     }
-    map[loc.row][loc.col] == 0; // add visit to start cell
+    map[loc.row][loc.col] = 1; // add visit to start cell
     traps[loc.row][loc.col] = 1; // note lava trap in start cell
 }
 
